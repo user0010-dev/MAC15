@@ -37,7 +37,7 @@ command_exists() {
 authenticate() {
     if [ -n "$1" ]; then
         # interazzione off
-        input_hash=$(echo -n "$1" | shasum -a 256 | cut -d' ' -f1)
+        input_hash=$(echo -n "$input_password" | shasum -a 256 | awk '{print $1}')
         if [ "$input_hash" == "$PASSWORD_HASH" ]; then
             return 0
         else
