@@ -2,7 +2,8 @@
 
 **Script di automazione per macOS fatto da uno studente, per studenti!**
 
-> 🔥 *Non sono un esperto, ho creato questo tool con l'aiuto di DeepSeek per semplificare la vita su macOS. Funziona davvero!*
+> 🔥 *Non sono un esperto, ho creato questo tool con l'aiuto di DeepSeek per semplificare la vita su macOS. Potrebbero esserci errori
+> la password verrà fornita a tutti gratuitamente nel prossimo update *
 
 ---
 
