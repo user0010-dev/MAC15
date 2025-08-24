@@ -11,7 +11,7 @@ NC='\033[0m' # No Color
 #la password sarà fornita nel prossimo aggiornamento 
 PASSWORD_HASH="8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92"
 
-# Funzione per stampare messaggi colorati
+# messaggi colorati
 print_status() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -28,15 +28,15 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Funzione per verificare se il comando esiste
+# verifica comandi
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Funzione di autenticazione
+# auth
 authenticate() {
     if [ -n "$1" ]; then
-        # Modalità non interattiva (da riga di comando)
+        # interazzione off
         input_hash=$(echo -n "$1" | shasum -a 256 | cut -d' ' -f1)
         if [ "$input_hash" == "$PASSWORD_HASH" ]; then
             return 0
@@ -45,7 +45,7 @@ authenticate() {
             return 1
         fi
     else
-        # Modalità interattiva
+        # interazzione on
         echo -n "Inserisci password: "
         read -s input_password
         echo
@@ -60,7 +60,7 @@ authenticate() {
     fi
 }
 
-# Funzione per aggiornare il sistema
+# Update del sistema macos 2.5.2
 update_system() {
     if ! authenticate "$1"; then
         return 1
@@ -78,7 +78,7 @@ update_system() {
     print_success "Sistema aggiornato"
 }
 
-# Funzione per pulizia del sistema
+# Cancellazione cache/cose inutili
 clean_system() {
     if ! authenticate "$1"; then
         return 1
@@ -96,7 +96,7 @@ clean_system() {
     # Pulizia log
     sudo find /var/log -name "*.log" -exec truncate -s 0 {} \; 2>/dev/null
     
-    # Pulizia temporanei (file più vecchi di 7 giorni)
+    # Pulizia temporanei di 7 giorni
     find /tmp -type f -mtime +7 -delete 2>/dev/null
     
     # Pulizia memoria
@@ -105,7 +105,7 @@ clean_system() {
     print_success "Pulizia completata"
 }
 
-# Funzione per gestione spazio disco
+# Gestione spazio disco
 disk_management() {
     print_status "Analisi spazio disco..."
     
@@ -116,12 +116,12 @@ disk_management() {
     print_status "Cercando file grandi (>100MB)..."
     find ~ -type f -size +100M -exec ls -lh {} \; 2>/dev/null | head -10
     
-    # Mostra le 10 cartelle più grandi
+    # Mostra le 10 cartelle più grandi di leo
     print_status "Top 10 cartelle più grandi:"
     du -h ~ 2>/dev/null | sort -rh | head -11
 }
 
-# Funzione per backup
+# Backup e funzioni
 backup_home() {
     if ! authenticate "$1"; then
         return 1
@@ -137,7 +137,7 @@ backup_home() {
     print_success "Backup completato"
 }
 
-# Funzione per monitoraggio sistema
+# Monitoraggio e anti virus
 system_monitor() {
     print_status "Monitoraggio sistema:"
     
@@ -159,7 +159,7 @@ system_monitor() {
     fi
 }
 
-# Funzione per sicurezza
+# Scirezza carabinieri
 security_check() {
     print_status "Controllo sicurezza..."
     
@@ -190,7 +190,7 @@ network_info() {
     lsof -i -P | grep LISTEN
 }
 
-# Funzione per installare Homebrew e app comuni
+# Funzione per installare Homebrew e app utili
 install_essentials() {
     if ! authenticate "$1"; then
         return 1
@@ -223,7 +223,7 @@ https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     print_success "Applicazioni essenziali installate"
 }
 
-# Funzione help
+# Funzione aiuto
 show_help() {
     echo -e "${GREEN}=== AutoMac - Guida all'uso ===${NC}"
     echo "Utilizzo:"
