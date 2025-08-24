@@ -1,5 +1,5 @@
 #!/bin/bash
-#AUTOMAC 0.0.3
+#AUTOMAC 0.0.4
 
 # Colori per output
 RED='\033[0;31m'
@@ -39,47 +39,6 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Funzione per installare i pacchetti necessari al primo utilizzo
-install_required_packages() {
-    if [ -f "$INSTALLED_PACKAGES_FILE" ]; then
-        return 0
-    fi
-    
-    print_status "Primo utilizzo: installazione pacchetti necessari..."
-    
-    # Installa Homebrew se non presente
-    if ! command_exists "brew"; then
-        print_status "Installazione di Homebrew..."
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-        
-        # Configura PATH per Homebrew su Apple Silicon
-        if [[ $(uname -m) == "arm64" ]]; then
-            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zshrc
-            eval "$(/opt/homebrew/bin/brew shellenv)"
-        fi
-    fi
-    
-    # Pacchetti necessari
-    local required_packages=(
-        "wget"
-        "git"
-        "htop"
-        "tree"
-        "istats"
-    )
-    
-    for pkg in "${required_packages[@]}"; do
-        if ! command_exists "$pkg"; then
-            print_status "Installazione di $pkg..."
-            brew install "$pkg"
-        fi
-    done
-    
-    # Segna che i pacchetti sono stati installati
-    touch "$INSTALLED_PACKAGES_FILE"
-    print_success "Pacchetti necessari installati"
-}
-
 # Funzione per autenticazione all'inizio
 authenticate_at_start() {
     if [ -n "$1" ]; then
@@ -117,7 +76,73 @@ check_authenticated() {
     return 0
 }
 
-# Update del sistema macos 2.5.2
+# Funzione per installare i pacchetti necessari
+install_required_packages() {
+    if ! check_authenticated; then
+        return 1
+    fi
+    
+    print_status "Controllo pacchetti necessari..."
+    
+    # Lista dei pacchetti necessari per il nostro script
+    local required_packages=(
+        "wget"
+        "git"
+        "htop"
+    )
+    
+    local missing_packages=()
+    
+    # Controlla quali pacchetti mancano
+    for pkg in "${required_packages[@]}"; do
+        if ! command_exists "$pkg"; then
+            missing_packages+=("$pkg")
+            print_warning "$pkg non è installato"
+        else
+            print_status "$pkg è già installato"
+        fi
+    done
+    
+    # Se non mancano pacchetti, esci
+    if [ ${#missing_packages[@]} -eq 0 ]; then
+        print_success "Tutti i pacchetti necessari sono già installati"
+        return 0
+    fi
+    
+    print_status "Pacchetti da installare: ${missing_packages[*]}"
+    
+    # Installa Homebrew se non presente
+    if ! command_exists "brew"; then
+        print_status "Installazione di Homebrew..."
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        
+        # Configura PATH per Homebrew
+        if [[ $(uname -m) == "arm64" ]]; then
+            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zshrc
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+        else
+            echo 'eval "$(/usr/local/bin/brew shellenv)"' >> ~/.zshrc
+            eval "$(/usr/local/bin/brew shellenv)"
+        fi
+    fi
+    
+    # Installa i pacchetti mancanti
+    for pkg in "${missing_packages[@]}"; do
+        print_status "Installazione di $pkg..."
+        brew install "$pkg"
+        if [ $? -eq 0 ]; then
+            print_success "$pkg installato con successo"
+        else
+            print_error "Errore durante l'installazione di $pkg"
+        fi
+    done
+    
+    # Segna che i pacchetti sono stati installati
+    touch "$INSTALLED_PACKAGES_FILE"
+    print_success "Installazione pacchetti completata"
+}
+
+# Update del sistema macos
 update_system() {
     if ! check_authenticated; then
         return 1
@@ -129,6 +154,7 @@ update_system() {
         brew update
         brew upgrade
         brew cleanup
+        print_success "Homebrew aggiornato"
     fi
     
     softwareupdate -i -a
@@ -173,7 +199,7 @@ disk_management() {
     print_status "Cercando file grandi (>100MB)..."
     find ~ -type f -size +100M -exec ls -lh {} \; 2>/dev/null | head -10
     
-    # Mostra le 10 cartelle più grandi di leo
+    # Mostra le 10 cartelle più grandi
     print_status "Top 10 cartelle più grandi:"
     du -h ~ 2>/dev/null | sort -rh | head -11
 }
@@ -193,7 +219,7 @@ backup_home() {
     print_success "Backup completato"
 }
 
-# Monitoraggio e anti virus
+# Monitoraggio sistema
 system_monitor() {
     print_status "Monitoraggio sistema:"
     
@@ -205,28 +231,23 @@ system_monitor() {
     
     echo -e "\n${YELLOW}=== PROCESSI ATTIVI ===${NC}"
     ps aux | head -10
-    
-    echo -e "\n${YELLOW}=== TEMPERATURE ===${NC}"
-    if command_exists "istats"; then
-        istats
-    else
-        print_warning "istats non installato. Esegui l'opzione 8 per installare i pacchetti necessari."
-    fi
 }
 
-# Scirezza carabinieri
+# Controllo sicurezza
 security_check() {
     print_status "Controllo sicurezza..."
     
     # Verifica firewall
+    print_status "Stato firewall:"
     sudo /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate
     
     # Verifica software updates
+    print_status "Aggiornamenti automatici:"
     defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled
     
     # Lista applicazioni aperte
     print_status "Applicazioni in esecuzione:"
-    osascript -e 'tell application "System Events" to get name of every process where background only is false'
+    osascript -e 'tell application "System Events" to get name of every process where background only is false' 2>/dev/null || echo "Non è possibile ottenere la lista delle applicazioni"
 }
 
 # Funzione per gestione rete
@@ -234,57 +255,37 @@ network_info() {
     print_status "Informazioni di rete:"
     
     echo -e "\n${YELLOW}=== IP ADDRESS ===${NC}"
-    ifconfig | grep "inet " | grep -v 127.0.0.1
-    
-    echo -e "\n${YELLOW}=== DNS ===${NC}"
-    scutil --dns
+    ifconfig | grep "inet " | grep -v 127.0.0.1 | head -5
     
     echo -e "\n${YELLOW}=== CONNESSIONI ATTIVE ===${NC}"
-    lsof -i -P | grep LISTEN
+    lsof -i -P | grep LISTEN | head -5
 }
 
-# Funzione per installare Homebrew e app utili
+# Funzione per installare applicazioni aggiuntive
 install_essentials() {
     if ! check_authenticated; then
         return 1
-    fi
-    
-    if ! command_exists "brew"; then
-        print_status "Installazione Homebrew..."
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-        
-        # Configura PATH per Homebrew su Apple Silicon
-        if [[ $(uname -m) == "arm64" ]]; then
-            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zshrc
-            eval "$(/opt/homebrew/bin/brew shellenv)"
-        fi
     fi
     
     print_status "Installazione applicazioni essenziali..."
     
     # App da installare
     local apps=(
-        "wget"
-        "git"
+        "tree"
         "python"
         "node"
-        "htop"
-        "tree"
-        "mas"
         "ffmpeg"
-        "istats"
     )
     
     for app in "${apps[@]}"; do
         if ! command_exists "$app"; then
+            print_status "Installazione di $app..."
             brew install "$app"
         else
             print_status "$app è già installato"
         fi
     done
     
-    # Aggiorna il file dei pacchetti installati
-    touch "$INSTALLED_PACKAGES_FILE"
     print_success "Applicazioni essenziali installate"
 }
 
@@ -295,51 +296,52 @@ show_help() {
     echo "  ./automac.sh [opzione] [password]"
     echo ""
     echo "Opzioni:"
-    echo "  1       Aggiorna sistema (richiede autenticazione)"
-    echo "  2       Pulizia sistema (richiede autenticazione)"
-    echo "  3       Gestione spazio disco"
-    echo "  4       Backup (richiede autenticazione)"
-    echo "  5       Monitoraggio sistema"
-    echo "  6       Controllo sicurezza"
-    echo "  7       Informazioni rete"
-    echo "  8       Installa applicazioni (richiede autenticazione)"
-    echo "  9       Tutte le operazioni (richiede autenticazione)"
-    echo "  0       Esci"
+    echo "  install  Installa pacchetti necessari (richiede password)"
+    echo "  1        Aggiorna sistema (richiede password)"
+    echo "  2        Pulizia sistema (richiede password)"
+    echo "  3        Gestione spazio disco"
+    echo "  4        Backup (richiede password)"
+    echo "  5        Monitoraggio sistema"
+    echo "  6        Controllo sicurezza"
+    echo "  7        Informazioni rete"
+    echo "  8        Installa applicazioni aggiuntive (richiede password)"
+    echo "  9        Tutte le operazioni (richiede password)"
+    echo "  0        Esci"
+    echo "  -h       Mostra questo aiuto"
     echo ""
     echo "Password predefinita: macos123"
-    echo "Modifica PASSWORD_HASH nello script per cambiarla"
 }
 
 # Menu principale
 show_menu() {
     echo -e "\n${GREEN}=== AutoMac - Automazione macOS ===${NC}"
-    echo "1. Aggiorna sistema (richiede autenticazione)"
-    echo "2. Pulizia sistema (richiede autenticazione)"
-    echo "3. Gestione spazio disco"
-    echo "4. Backup home directory (richiede autenticazione)"
-    echo "5. Monitoraggio sistema"
-    echo "6. Controllo sicurezza"
-    echo "7. Informazioni rete"
-    echo "8. Installa applicazioni (richiede autenticazione)"
-    echo "9. Tutte le operazioni (richiede autenticazione)"
-    echo "0. Esci"
+    echo "install   Installa pacchetti necessari (password)"
+    echo "1.        Aggiorna sistema (password)"
+    echo "2.        Pulizia sistema (password)"
+    echo "3.        Gestione spazio disco"
+    echo "4.        Backup home directory (password)"
+    echo "5.        Monitoraggio sistema"
+    echo "6.        Controllo sicurezza"
+    echo "7.        Informazioni rete"
+    echo "8.        Installa applicazioni aggiuntive (password)"
+    echo "9.        Tutte le operazioni (password)"
+    echo "0.        Esci"
+    echo "-h        Aiuto"
     echo -n "Scegli un'opzione: "
 }
 
 # Main execution
 main() {
-    # Installa pacchetti necessari al primo utilizzo
-    install_required_packages
-    
-    # Autenticazione all'inizio se sono richieste operazioni protette
+    # Prima di tutto: AUTENTICAZIONE
     case "${1:-}" in
-        "1"|"2"|"4"|"8"|"9")
+        "install"|"1"|"2"|"4"|"8"|"9")
             if ! authenticate_at_start "$2"; then
                 exit 1
             fi
+            print_success "Autenticazione riuscita"
             ;;
         *)
-            # Per modalità interattiva, autenticare all'inizio se necessario
+            # Per modalità interattiva
             if [ $# -eq 0 ]; then
                 echo "Autenticazione richiesta per alcune funzioni"
                 if authenticate_at_start; then
@@ -351,7 +353,15 @@ main() {
             ;;
     esac
 
-    # Esecuzione in base all'opzione
+    # Poi: INSTALLAZIONE PACCHETTI (se richiesto)
+    case "${1:-}" in
+        "install")
+            install_required_packages
+            exit 0
+            ;;
+    esac
+
+    # Infine: ESECUZIONE OPERAZIONI
     case "${1:-}" in
         "1")
             update_system
@@ -397,39 +407,46 @@ main() {
                 show_menu
                 read choice
                 case $choice in
-                    1) 
+                    "install")
+                        if [ "$AUTHENTICATED" = true ]; then
+                            install_required_packages
+                        else
+                            print_error "Autenticazione richiesta"
+                        fi
+                        ;;
+                    "1")
                         if [ "$AUTHENTICATED" = true ]; then
                             update_system
                         else
-                            print_error "Autenticazione richiesta - Riavviare lo script"
+                            print_error "Autenticazione richiesta"
                         fi
                         ;;
-                    2) 
+                    "2")
                         if [ "$AUTHENTICATED" = true ]; then
                             clean_system
                         else
-                            print_error "Autenticazione richiesta - Riavviare lo script"
+                            print_error "Autenticazione richiesta"
                         fi
                         ;;
-                    3) disk_management ;;
-                    4) 
+                    "3") disk_management ;;
+                    "4")
                         if [ "$AUTHENTICATED" = true ]; then
                             backup_home
                         else
-                            print_error "Autenticazione richiesta - Riavviare lo script"
+                            print_error "Autenticazione richiesta"
                         fi
                         ;;
-                    5) system_monitor ;;
-                    6) security_check ;;
-                    7) network_info ;;
-                    8) 
+                    "5") system_monitor ;;
+                    "6") security_check ;;
+                    "7") network_info ;;
+                    "8")
                         if [ "$AUTHENTICATED" = true ]; then
                             install_essentials
                         else
-                            print_error "Autenticazione richiesta - Riavviare lo script"
+                            print_error "Autenticazione richiesta"
                         fi
                         ;;
-                    9) 
+                    "9")
                         if [ "$AUTHENTICATED" = true ]; then
                             update_system
                             clean_system
@@ -437,14 +454,17 @@ main() {
                             security_check
                             system_monitor
                         else
-                            print_error "Autenticazione richiesta - Riavviare lo script"
+                            print_error "Autenticazione richiesta"
                         fi
                         ;;
-                    0) 
+                    "0")
                         print_status "Arrivederci!"
                         exit 0
                         ;;
-                    *) print_error "Opzione non valida" ;;
+                    "-h") show_help ;;
+                    *)
+                        print_error "Opzione non valida"
+                        ;;
                 esac
                 echo -e "\nPremi Invio per continuare..."
                 read
