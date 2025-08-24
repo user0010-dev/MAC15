@@ -1,7 +1,5 @@
 #!/bin/bash
-
-# AutoMac - Script di automazione per macOS
-# Utilizzo: ./automac.sh [opzione] [password]
+#AUTOMAC 0.0.1
 
 # Colori per output
 RED='\033[0;31m'
@@ -10,7 +8,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Password hashed (sha256 di "macos123") - MODIFICA QUESTA PASSWORD!
+#la password sarà fornita nel prossimo aggiornamento 
 PASSWORD_HASH="8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92"
 
 # Funzione per stampare messaggi colorati
