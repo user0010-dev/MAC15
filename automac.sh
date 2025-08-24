@@ -9,7 +9,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 #la password sarà fornita nel prossimo aggiornamento 
-PASSWORD_HASH="03ad7fccecf32af81f39d966d55bb09477f6a2f5ce71bd9f4d9cf1e939c7c2f0"
+PASSWORD_HASH="64d38862b5b70b0605734aa56b8c3f0ef95bc43aa7da69ba837a1cfa960765b1"
 
 # messaggi colorati
 print_status() {
@@ -34,23 +34,25 @@ command_exists() {
 }
 
 # auth
+# Sostituisci tutta la funzione authenticate con questa:
 authenticate() {
     if [ -n "$1" ]; then
-        # interazzione off
-        input_hash=$(echo -n "$input_password" | shasum -a 256 | awk '{print $1}')
+        # Modalità non interattiva (da riga di comando)
+        input_hash=$(echo -n "$1" | shasum -a 256 | awk '{print $1}')
         if [ "$input_hash" == "$PASSWORD_HASH" ]; then
             return 0
         else
             print_error "Password errata"
+            echo "Input: $input_hash"
+            echo "Expected: $PASSWORD_HASH"
             return 1
         fi
     else
-        # interazzione on
+        # Modalità interattiva
         echo -n "Inserisci password: "
         read -s input_password
         echo
-        input_hash=$(echo -n "$input_password" | shasum -a 256 | cut -d' ' 
--f1)
+        input_hash=$(echo -n "$input_password" | shasum -a 256 | awk '{print $1}')
         if [ "$input_hash" == "$PASSWORD_HASH" ]; then
             return 0
         else
@@ -59,7 +61,6 @@ authenticate() {
         fi
     fi
 }
-
 # Update del sistema macos 2.5.2
 update_system() {
     if ! authenticate "$1"; then
