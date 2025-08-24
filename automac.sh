@@ -9,7 +9,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 #la password sarà fornita nel prossimo aggiornamento 
-PASSWORD_HASH="8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92"
+PASSWORD_HASH="03ad7fccecf32af81f39d966d55bb09477f6a2f5ce71bd9f4d9cf1e939c7c2f0"
 
 # messaggi colorati
 print_status() {
