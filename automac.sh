@@ -1,5 +1,5 @@
 #!/bin/bash
-#AUTOMAC PRO - LICENSE SYSTEM AUTOMATICO
+#AUTOMAC PRO - VERSIONE UNIVERSALE
 
 # Colori per output
 RED='\033[0;31m'
@@ -8,14 +8,11 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Configurazione Licenza
-LICENSE_KEY="LICENZA_CLIENTE_001"
-GITHUB_TOKEN="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"
+# Configurazione
+CONFIG_DIR="$HOME/.automac"
+LICENSE_FILE="$CONFIG_DIR/license.key"
 REPO_OWNER="user0010-dev"
 REPO_NAME="automac-licenses-server"
-
-# Variabile per memorizzare se l'autenticazione è avvenuta
-AUTHENTICATED=false
 
 # Messaggi colorati
 print_status() {
@@ -34,70 +31,43 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Funzione per aggiornare il MAC automaticamente
-update_license_on_github() {
-    local license_key="$1"
-    local mac_address="$2"
+# Setup licenza automatico
+setup_license() {
+    mkdir -p "$CONFIG_DIR"
+    chmod 700 "$CONFIG_DIR"
     
-    # Scarica il file corrente e il suo SHA
-    local file_info=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-        "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/contents/licenses.json")
+    if [ ! -f "$LICENSE_FILE" ]; then
+        echo "=== BENVENUTO IN AUTOMAC PRO ==="
+        echo "Inserisci la licenza che hai acquistato"
+        echo -n "Licenza: "
+        read user_license
+        echo "$user_license" > "$LICENSE_FILE"
+        chmod 600 "$LICENSE_FILE"
+        echo "Licenza memorizzata con successo!"
+        echo ""
+    fi
     
-    local current_sha=$(echo "$file_info" | grep '"sha"' | cut -d'"' -f4)
-    local current_content=$(echo "$file_info" | grep '"content"' | cut -d'"' -f4 | base64 -d)
+    LICENSE_KEY=$(cat "$LICENSE_FILE" 2>/dev/null)
     
-    # Sostituisce il MAC address
-    local new_content=$(echo "$current_content" | \
-        sed "s/\"$license_key\": {[^}]*\"mac_address\": \"[^\"]*\"/\"$license_key\": {\"mac_address\": \"$mac_address\"/")
-    
-    # Aggiorna su GitHub
-    local response=$(curl -s -X PUT -H "Authorization: token $GITHUB_TOKEN" \
-        -H "Content-Type: application/json" \
-        -d "{
-            \"message\": \"Auto-update MAC for $license_key\",
-            \"content\": \"$(echo -n "$new_content" | base64)\",
-            \"sha\": \"$current_sha\"
-        }" \
-        "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/contents/licenses.json")
-    
-    if echo "$response" | grep -q "commit"; then
-        echo "SUCCESS"
-        return 0
-    else
-        echo "ERROR"
-        return 1
+    if [ -z "$LICENSE_KEY" ]; then
+        print_error "Licenza non valida. Reinserisci la licenza."
+        rm -f "$LICENSE_FILE"
+        exit 1
     fi
 }
 
-# Funzione verifica licenza
+# Verifica licenza
 verify_license() {
     local license_key="$1"
-    local mac_address=$(ifconfig en0 | grep ether | awk '{print $2}')
     
-    # Scarica licenses.json
     local json_data=$(curl -s "https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/main/licenses.json")
     
     if echo "$json_data" | grep -q "\"$license_key\""; then
         local status=$(echo "$json_data" | grep -A5 "\"$license_key\"" | grep '"status"' | cut -d'"' -f4)
-        local saved_mac=$(echo "$json_data" | grep -A5 "\"$license_key\"" | grep '"mac_address"' | cut -d'"' -f4)
         
         if [ "$status" = "active" ]; then
-            if [ -z "$saved_mac" ] || [ "$saved_mac" = "\"\"" ]; then
-                # Prima attivazione - aggiorna automaticamente
-                if update_license_on_github "$license_key" "$mac_address"; then
-                    echo "ACTIVATED:$mac_address"
-                    return 0
-                else
-                    echo "ACTIVATION_FAILED"
-                    return 1
-                fi
-            elif [ "$saved_mac" = "$mac_address" ]; then
-                echo "VALID"
-                return 0
-            else
-                echo "INVALID_MAC"
-                return 1
-            fi
+            echo "VALID"
+            return 0
         else
             echo "INACTIVE"
             return 1
@@ -108,48 +78,8 @@ verify_license() {
     fi
 }
 
-# Funzione per autenticazione
-authenticate() {
-    local PASSWORD_HASH="64d38862b5b70b0605734aa56b8c3f0ef95bc43aa7da69ba837a1cfa960765b1"
-    if [ -n "$1" ]; then
-        input_hash=$(echo -n "$1" | shasum -a 256 | awk '{print $1}')
-        if [ "$input_hash" = "$PASSWORD_HASH" ]; then
-            AUTHENTICATED=true
-            return 0
-        else
-            print_error "Password errata"
-            return 1
-        fi
-    else
-        echo -n "Inserisci password: "
-        read -s input_password
-        echo
-        input_hash=$(echo -n "$input_password" | shasum -a 256 | awk '{print $1}')
-        if [ "$input_hash" = "$PASSWORD_HASH" ]; then
-            AUTHENTICATED=true
-            return 0
-        else
-            print_error "Password errata"
-            return 1
-        fi
-    fi
-}
-
-# Funzione per verificare se autenticato
-check_authenticated() {
-    if [ "$AUTHENTICATED" = false ]; then
-        print_error "Operazione non autorizzata"
-        return 1
-    fi
-    return 0
-}
-
 # Update del sistema
 update_system() {
-    if ! check_authenticated; then
-        return 1
-    fi
-    
     print_status "Aggiornamento del sistema in corso..."
     
     if command -v "brew" >/dev/null 2>&1; then
@@ -165,10 +95,6 @@ update_system() {
 
 # Cancellazione cache
 clean_system() {
-    if ! check_authenticated; then
-        return 1
-    fi
-    
     print_status "Pulizia del sistema in corso..."
     
     find ~/Library/Caches -type f -name "*.cache" -delete 2>/dev/null
@@ -193,10 +119,6 @@ disk_management() {
 
 # Backup
 backup_home() {
-    if ! check_authenticated; then
-        return 1
-    fi
-    
     local backup_dir="/Volumes/Backup/$(date +%Y%m%d_%H%M%S)"
     print_status "Backup della home directory in: $backup_dir"
     mkdir -p "$backup_dir"
@@ -222,8 +144,6 @@ security_check() {
     sudo /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate
     print_status "Aggiornamenti automatici:"
     defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled
-    print_status "Applicazioni in esecuzione:"
-    osascript -e 'tell application "System Events" to get name of every process where background only is false' 2>/dev/null || echo "Non è possibile ottenere la lista"
 }
 
 # Funzione per gestione rete
@@ -251,7 +171,10 @@ show_menu() {
 
 # Main execution
 main() {
-    # Verifica licenza all'inizio
+    # Setup licenza automatico
+    setup_license
+    
+    # Verifica licenza
     print_status "Verifica licenza in corso..."
     result=$(verify_license "$LICENSE_KEY")
     
@@ -259,12 +182,10 @@ main() {
         "VALID")
             print_success "Licenza verificata con successo!"
             ;;
-        "ACTIVATED:"*)
-            print_success "Licenza attivata per questo Mac!"
-            ;;
         *)
             print_error "Licenza non valida: $result"
-            print_error "Acquista su: https://tuosito.com"
+            print_error "Controlla di aver inserito la licenza corretta"
+            rm -f "$LICENSE_FILE"
             exit 1
             ;;
     esac
