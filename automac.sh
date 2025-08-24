@@ -1,5 +1,5 @@
 #!/bin/bash
-#AUTOMAC 0.0.4
+#AUTOMAC 0.0.5 - Versione Ottimizzata
 
 # Colori per output
 RED='\033[0;31m'
@@ -76,7 +76,7 @@ check_authenticated() {
     return 0
 }
 
-# Funzione per installare i pacchetti necessari
+# Funzione per installare i pacchetti necessari (SOLO se veramente necessari)
 install_required_packages() {
     if ! check_authenticated; then
         return 1
@@ -84,11 +84,9 @@ install_required_packages() {
     
     print_status "Controllo pacchetti necessari..."
     
-    # Lista dei pacchetti necessari per il nostro script
+    # SOLO pacchetti LEGGERI e veramente utili
     local required_packages=(
-        "wget"
-        "git"
-        "htop"
+        "htop"   # Per monitoraggio sistema (opzionale ma utile)
     )
     
     local missing_packages=()
@@ -134,6 +132,7 @@ install_required_packages() {
             print_success "$pkg installato con successo"
         else
             print_error "Errore durante l'installazione di $pkg"
+            print_warning "Il pacchetto $pkg è opzionale, lo script funzionerà comunque"
         fi
     done
     
@@ -231,6 +230,14 @@ system_monitor() {
     
     echo -e "\n${YELLOW}=== PROCESSI ATTIVI ===${NC}"
     ps aux | head -10
+    
+    # htop è opzionale, usiamo top che è preinstallato
+    if command_exists "htop"; then
+        echo -e "\n${YELLOW}=== HTOP (VISUALIZZAZIONE AVANZATA) ===${NC}"
+        htop --version | head -1
+    else
+        print_status "Installa htop con l'opzione 8 per monitoraggio avanzato"
+    fi
 }
 
 # Controllo sicurezza
@@ -261,20 +268,18 @@ network_info() {
     lsof -i -P | grep LISTEN | head -5
 }
 
-# Funzione per installare applicazioni aggiuntive
+# Funzione per installare applicazioni aggiuntive (OPZIONALI)
 install_essentials() {
     if ! check_authenticated; then
         return 1
     fi
     
-    print_status "Installazione applicazioni essenziali..."
+    print_status "Installazione applicazioni opzionali..."
     
-    # App da installare
+    # App OPZIONALI (non necessarie per lo script base)
     local apps=(
-        "tree"
-        "python"
-        "node"
-        "ffmpeg"
+        "htop"     # Monitoraggio avanzato
+        "tree"     # Visualizzazione alberi directory
     )
     
     for app in "${apps[@]}"; do
@@ -286,7 +291,7 @@ install_essentials() {
         fi
     done
     
-    print_success "Applicazioni essenziali installate"
+    print_success "Applicazioni opzionali installate"
 }
 
 # Funzione aiuto
@@ -296,7 +301,7 @@ show_help() {
     echo "  ./automac.sh [opzione] [password]"
     echo ""
     echo "Opzioni:"
-    echo "  install  Installa pacchetti necessari (richiede password)"
+    echo "  install  Installa pacchetti opzionali (richiede password)"
     echo "  1        Aggiorna sistema (richiede password)"
     echo "  2        Pulizia sistema (richiede password)"
     echo "  3        Gestione spazio disco"
@@ -304,18 +309,20 @@ show_help() {
     echo "  5        Monitoraggio sistema"
     echo "  6        Controllo sicurezza"
     echo "  7        Informazioni rete"
-    echo "  8        Installa applicazioni aggiuntive (richiede password)"
+    echo "  8        Installa applicazioni opzionali (richiede password)"
     echo "  9        Tutte le operazioni (richiede password)"
     echo "  0        Esci"
     echo "  -h       Mostra questo aiuto"
     echo ""
     echo "Password predefinita: macos123"
+    echo ""
+    echo "NOTA: Lo script funziona SENZA installare pacchetti aggiuntivi!"
 }
 
 # Menu principale
 show_menu() {
     echo -e "\n${GREEN}=== AutoMac - Automazione macOS ===${NC}"
-    echo "install   Installa pacchetti necessari (password)"
+    echo "install   Installa pacchetti opzionali (password)"
     echo "1.        Aggiorna sistema (password)"
     echo "2.        Pulizia sistema (password)"
     echo "3.        Gestione spazio disco"
@@ -323,7 +330,7 @@ show_menu() {
     echo "5.        Monitoraggio sistema"
     echo "6.        Controllo sicurezza"
     echo "7.        Informazioni rete"
-    echo "8.        Installa applicazioni aggiuntive (password)"
+    echo "8.        Installa applicazioni opzionali (password)"
     echo "9.        Tutte le operazioni (password)"
     echo "0.        Esci"
     echo "-h        Aiuto"
@@ -353,7 +360,7 @@ main() {
             ;;
     esac
 
-    # Poi: INSTALLAZIONE PACCHETTI (se richiesto)
+    # Poi: INSTALLAZIONE PACCHETTI OPZIONALI (se richiesto)
     case "${1:-}" in
         "install")
             install_required_packages
