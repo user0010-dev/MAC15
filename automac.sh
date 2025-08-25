@@ -11,7 +11,7 @@ NC='\033[0m' # No Color
 # Configurazione
 CONFIG_DIR="$HOME/.automac"
 LICENSE_FILE="$CONFIG_DIR/license.key"
-VERIFY_URL="https://user0010-dev.github.io/automac-licenses-server/verify.php"
+VERIFY_URL="https://raw.githubusercontent.com/user0010-dev/automac-licenses-server/main/verify.php"
 
 # Messaggi colorati
 print_status() {
