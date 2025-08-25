@@ -1,5 +1,5 @@
 #!/bin/bash
-#AUTOMAC PRO - VERSIONE UNIVERSALE
+#AUTOMAC PRO - VERSIONE DEFINITIVA
 
 # Colori per output
 RED='\033[0;31m'
@@ -11,8 +11,7 @@ NC='\033[0m' # No Color
 # Configurazione
 CONFIG_DIR="$HOME/.automac"
 LICENSE_FILE="$CONFIG_DIR/license.key"
-REPO_OWNER="user0010-dev"
-REPO_NAME="automac-licenses-server"
+VERIFY_URL="https://user0010-dev.github.io/automac-licenses-server/verify.php"
 
 # Messaggi colorati
 print_status() {
@@ -47,7 +46,7 @@ setup_license() {
         echo ""
     fi
     
-    LICENSE_KEY=$(cat "$LICENSE_FILE" 2>/dev/null)
+    LICENSE_KEY=$(cat "$LICENSE_FILE" 2>/dev/null | tr -d '[:space:]')
     
     if [ -z "$LICENSE_KEY" ]; then
         print_error "Licenza non valida. Reinserisci la licenza."
@@ -60,22 +59,22 @@ setup_license() {
 verify_license() {
     local license_key="$1"
     
-    local json_data=$(curl -s "https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/main/licenses.json")
+    local response=$(curl -s "$VERIFY_URL?key=$license_key")
     
-    if echo "$json_data" | grep -q "\"$license_key\""; then
-        local status=$(echo "$json_data" | grep -A5 "\"$license_key\"" | grep '"status"' | cut -d'"' -f4)
-        
-        if [ "$status" = "active" ]; then
+    case "$response" in
+        "VALID")
             echo "VALID"
             return 0
-        else
+            ;;
+        "INACTIVE")
             echo "INACTIVE"
             return 1
-        fi
-    else
-        echo "NOT_FOUND"
-        return 1
-    fi
+            ;;
+        *)
+            echo "NOT_FOUND"
+            return 1
+            ;;
+    esac
 }
 
 # Update del sistema
@@ -182,10 +181,17 @@ main() {
         "VALID")
             print_success "Licenza verificata con successo!"
             ;;
-        *)
-            print_error "Licenza non valida: $result"
-            print_error "Controlla di aver inserito la licenza corretta"
+        "INACTIVE")
+            print_error "Licenza disattivata. Contatta il supporto."
+            exit 1
+            ;;
+        "NOT_FOUND")
+            print_error "Licenza non trovata. Verifica il codice."
             rm -f "$LICENSE_FILE"
+            exit 1
+            ;;
+        *)
+            print_error "Errore di connessione. Riprova più tardi."
             exit 1
             ;;
     esac
