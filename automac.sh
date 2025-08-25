@@ -1,5 +1,5 @@
 #!/bin/bash
-#AUTOMAC PRO - VERSIONE DEFINITIVA
+#AUTOMAC PRO - VERSIONE FUNZIONANTE
 
 # Colori per output
 RED='\033[0;31m'
@@ -11,7 +11,6 @@ NC='\033[0m' # No Color
 # Configurazione
 CONFIG_DIR="$HOME/.automac"
 LICENSE_FILE="$CONFIG_DIR/license.key"
-VERIFY_URL="https://user0010-dev.github.io/automac-licenses-server/verify.php"
 
 # Messaggi colorati
 print_status() {
@@ -23,7 +22,7 @@ print_success() {
 }
 
 print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+    echo -e "${YELLOW}[WARNING]${NC} $1
 }
 
 print_error() {
@@ -55,26 +54,28 @@ setup_license() {
     fi
 }
 
-# Verifica licenza
+# Verifica licenza - VERSIONE FUNZIONANTE
 verify_license() {
     local license_key="$1"
     
-    local response=$(curl -s "$VERIFY_URL?key=$license_key")
+    # Scarica direttamente il file JSON
+    local json_data=$(curl -s "https://raw.githubusercontent.com/user0010-dev/automac-licenses-server/main/licenses.json")
     
-    case "$response" in
-        "VALID")
+    # Cerca la licenza nel JSON
+    if echo "$json_data" | grep -q "\"$license_key\""; then
+        local status=$(echo "$json_data" | grep -A5 "\"$license_key\"" | grep '"status"' | cut -d'"' -f4)
+        
+        if [ "$status" = "active" ]; then
             echo "VALID"
             return 0
-            ;;
-        "INACTIVE")
+        else
             echo "INACTIVE"
             return 1
-            ;;
-        *)
-            echo "NOT_FOUND"
-            return 1
-            ;;
-    esac
+        fi
+    else
+        echo "NOT_FOUND"
+        return 1
+    fi
 }
 
 # Update del sistema
