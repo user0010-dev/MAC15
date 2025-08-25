@@ -55,26 +55,38 @@ setup_license() {
     fi
 }
 
-# Verifica licenza
+
 verify_license() {
     local license_key="$1"
     
-    local response=$(curl -s "$VERIFY_URL?key=$license_key")
+    # URL del file licenses.json
+    local json_url="https://raw.githubusercontent.com/user0010-dev/automac-licenses-server/main/licenses.json"
     
-    case "$response" in
-        "VALID")
+    # Scarica il file JSON
+    local json_data=$(curl -s "$json_url")
+    
+    # Verifica se il file JSON è valido
+    if [ -z "$json_data" ]; then
+        echo "ERROR: Impossibile scaricare il file delle licenze"
+        return 1
+    fi
+    
+    # Cerco la licenza nel JSON
+    if echo "$json_data" | grep -q "\"$license_key\""; then
+        # Estrae lo status della licenza
+        local status=$(echo "$json_data" | grep -A5 "\"$license_key\"" | grep '"status"' | cut -d'"' -f4)
+        
+        if [ "$status" = "active" ]; then
             echo "VALID"
             return 0
-            ;;
-        "INACTIVE")
+        else
             echo "INACTIVE"
             return 1
-            ;;
-        *)
-            echo "NOT_FOUND"
-            return 1
-            ;;
-    esac
+        fi
+    else
+        echo "NOT_FOUND"
+        return 1
+    fi
 }
 
 # Update del sistema
