@@ -1,5 +1,5 @@
 #!/bin/bash
-#AUTOMAC PRO - VERSIONE FUNZIONANTE
+# AUTOMAC PRO - VERSIONE FUNZIONANTE
 
 # Colori per output
 RED='\033[0;31m'
@@ -22,7 +22,7 @@ print_success() {
 }
 
 print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
 print_error() {
