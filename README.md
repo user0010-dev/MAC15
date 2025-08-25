@@ -1,9 +1,8 @@
-# 🚀 AutoMac - Il Tuo Assistente macOS
+# 🚀 AutoMac - Il Tuo Assistente macOS 0.0.6
 
 **Script di automazione per macOS fatto da uno studente, per studenti!**
 
-> 🔥 *Non sono un esperto, ho creato questo tool con l'aiuto di DeepSeek per semplificare la vita su macOS. Potrebbero esserci errori
-> la password verrà fornita a tutti gratuitamente nel prossimo update *
+> 🔥 *Non sono un esperto, ho creato questo tool con l'aiuto di DeepSeek per semplificare la vita su macOS. Per acuisto di licenza si prega di aspettare fino all update 0.1.0 *
 
 ---
 
